@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NZ Bird Explorer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #e0f2fe; /* Light sky blue */
+            overflow: hidden;
+            touch-action: none;
+        }
+        .font-fredoka {
+            font-family: 'Fredoka One', cursive;
+        }
+        .scene {
+            position: relative;
+            width: 100%;
+            height: 100vh;
+            background: linear-gradient(to bottom, #87CEEB 0%, #d1f1ff 70%, #6ab04c 70%, #4a7d34 100%);
+            overflow: hidden;
+        }
+        .tree, .bush {
+            position: absolute;
+            bottom: 25%;
+            transform: translateX(-50%);
+        }
+        .pohutukawa { left: 20%; }
+        .kowhai { left: 50%; }
+        .totara { left: 80%; }
+        .undergrowth {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 30%;
+            left: 0;
+        }
+
+        .bird {
+            position: absolute;
+            cursor: pointer;
+            transition: transform 0.2s ease-in-out, filter 0.2s;
+            filter: drop-shadow(0 4px 6px rgba(0,0,0,0.2));
+            width: 80px;
+            height: 80px;
+        }
+
+        .bird:hover {
+            transform: scale(1.15) rotate(5deg);
+            filter: drop-shadow(0 6px 8px rgba(0,0,0,0.3));
+        }
+
+        /* Modal styles */
+        .modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        .modal-backdrop.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+        .modal-content {
+            background-color: white;
+            border-radius: 1.5rem;
+            padding: 1.5rem;
+            width: 90%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+        .modal-backdrop.active .modal-content {
+            transform: scale(1);
+        }
+
+        .tab-button {
+            transition: all 0.2s;
+            border-bottom: 4px solid transparent;
+        }
+        .tab-button.active {
+            color: #1e40af; /* Deep blue */
+            border-bottom-color: #2563eb; /* Blue */
+        }
+        .quiz-option.correct {
+            background-color: #86efac; /* Green-300 */
+            border-color: #22c55e;
+        }
+        .quiz-option.incorrect {
+            background-color: #fca5a5; /* Red-300 */
+            border-color: #ef4444;
+        }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Responsive placement */
+        /* Tui in Pohutukawa */
+        .bird-tui { bottom: 65%; left: 18%; }
+        /* Kereru in Kowhai */
+        .bird-kereru { bottom: 60%; left: 48%; }
+        /* Piwakawaka in Totara */
+        .bird-piwakawaka { bottom: 50%; left: 79%; }
+        /* Kiwi in undergrowth */
+        .bird-kiwi { bottom: 20%; left: 35%; }
+        /* Weka in undergrowth */
+        .bird-weka { bottom: 18%; left: 65%; }
+
+        @media (max-width: 768px) {
+             .bird { width: 60px; height: 60px; }
+            .bird-tui { bottom: 65%; left: 10%; }
+            .bird-kereru { bottom: 70%; left: 45%; }
+            .bird-piwakawaka { bottom: 55%; left: 80%; }
+            .bird-kiwi { bottom: 20%; left: 25%; }
+            .bird-weka { bottom: 18%; left: 68%; }
+        }
+    </style>
+</head>
+<body class="select-none">
+
+    <div id="app" class="scene">
+        <!-- SCENE TITLE -->
+        <div class="absolute top-4 left-1/2 -translate-x-1/2 bg-white/80 backdrop-blur-sm p-4 rounded-2xl shadow-lg text-center z-10">
+            <h1 class="font-fredoka text-3xl md:text-4xl text-green-800 tracking-wider">NZ Bird Explorer</h1>
+            <p class="text-green-700">Click on a bird to learn more!</p>
+        </div>
+
+        <!-- TREES AND BUSH -->
+        <!-- Pōhutukawa -->
+        <div class="tree pohutukawa w-64 h-96">
+            <div class="absolute bottom-0 w-12 h-48 bg-yellow-900 rounded-t-lg left-1/2 -translate-x-1/2"></div>
+            <div class="absolute w-64 h-64 bg-green-800 rounded-full bottom-32 -translate-x-1/2 left-1/2"></div>
+             <div class="absolute w-12 h-12 bg-red-600 rounded-full bottom-64 left-16"></div>
+             <div class="absolute w-10 h-10 bg-red-600 rounded-full bottom-80 left-32"></div>
+             <div class="absolute w-8 h-8 bg-red-600 rounded-full bottom-72 left-48"></div>
+        </div>
+
+        <!-- Kōwhai -->
+        <div class="tree kowhai w-56 h-80">
+            <div class="absolute bottom-0 w-10 h-40 bg-yellow-800 rounded-t-lg left-1/2 -translate-x-1/2"></div>
+            <div class="absolute w-56 h-56 bg-lime-600 rounded-full bottom-28 -translate-x-1/2 left-1/2"></div>
+            <div class="absolute w-6 h-10 bg-yellow-400 rounded-full bottom-48 left-8 transform -rotate-45"></div>
+            <div class="absolute w-6 h-10 bg-yellow-400 rounded-full bottom-60 left-20 transform -rotate-20"></div>
+            <div class="absolute w-6 h-10 bg-yellow-400 rounded-full bottom-52 left-36 transform rotate-30"></div>
+        </div>
+        
+        <!-- Tōtara -->
+        <div class="tree totara w-48 h-96">
+            <div class="absolute bottom-0 w-8 h-56 bg-orange-900 rounded-t-lg left-1/2 -translate-x-1/2"></div>
+             <div class="absolute w-48 h-48 bg-emerald-800 rounded-full bottom-48 -translate-x-1/2 left-1/2"></div>
+             <div class="absolute w-40 h-40 bg-emerald-900 rounded-full bottom-40 -translate-x-1/2 left-1/2"></div>
+        </div>
+
+        <!-- Undergrowth -->
+        <div class="undergrowth">
+            <!-- Ferns -->
+            <div class="absolute bottom-0 left-10 w-24 h-24 bg-green-700 rounded-full opacity-80"></div>
+            <div class="absolute bottom-0 left-24 w-16 h-16 bg-green-800 rounded-t-full opacity-80"></div>
+            <div class="absolute bottom-0 right-10 w-32 h-32 bg-green-700 rounded-t-full opacity-80"></div>
+            <div class="absolute bottom-0 right-40 w-20 h-20 bg-green-800 rounded-full opacity-80"></div>
+            <div class="absolute bottom-0 left-1/2 w-40 h-20 bg-green-900 rounded-t-full opacity-80"></div>
+        </div>
+
+
+        <!-- BIRDS -->
+        <div id="tui" class="bird bird-tui" data-bird="tui">
+            <img src="https://placehold.co/100x100/1a1a1a/ffffff?text=Tūī" alt="Tūī" class="w-full h-full object-cover rounded-full" onerror="this.onerror=null;this.src='https://placehold.co/100x100/cccccc/000000?text=Error';">
+        </div>
+        <div id="kereru" class="bird bird-kereru" data-bird="kereru">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/2/22/Kereru%2C_Tiritiri_Matangi.jpg" alt="Kererū" class="w-full h-full object-cover rounded-full" onerror="this.onerror=null;this.src='https://placehold.co/100x100/cccccc/000000?text=Error';">
+        </div>
+        <div id="piwakawaka" class="bird bird-piwakawaka" data-bird="piwakawaka">
+            <img src="https://placehold.co/100x100/6d4c41/ffffff?text=Pīwakawaka" alt="Pīwakawaka" class="w-full h-full object-cover rounded-full" onerror="this.onerror=null;this.src='https://placehold.co/100x100/cccccc/000000?text=Error';">
+        </div>
+        <div id="kiwi" class="bird bird-kiwi" data-bird="kiwi">
+            <img src="https://placehold.co/100x100/8d6e63/ffffff?text=Kiwi" alt="Kiwi" class="w-full h-full object-cover rounded-full" onerror="this.onerror=null;this.src='https://placehold.co/100x100/cccccc/000000?text=Error';">
+        </div>
+        <div id="weka" class="bird bird-weka" data-bird="weka">
+            <img src="https://placehold.co/100x100/a1887f/000000?text=Weka" alt="Weka" class="w-full h-full object-cover rounded-full" onerror="this.onerror=null;this.src='https://placehold.co/100x100/cccccc/000000?text=Error';">
+        </div>
+
+    </div>
+
+    <!-- MODAL -->
+    <div id="modal-backdrop" class="modal-backdrop">
+        <div id="modal-content" class="modal-content">
+            <!-- Content will be injected by JavaScript -->
+        </div>
+    </div>
+
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+    <script>
+        const birdData = {
+            tui: {
+                name: "Tūī",
+                tree: "Pōhutukawa",
+                facts: {
+                    appearance: "Tūī are known for their beautiful, iridescent feathers that shimmer from dark blue to green and bronze. They have a distinctive white tuft of feathers at their throat, called a 'poi'.",
+                    habitat: "They live in native forests, bush reserves, and even suburban gardens, especially where there are flowering trees like kōwhai, pōhutukawa, and flax.",
+                    diet: "Their main food is nectar from flowers, which they sip with their brush-tipped tongue. They also eat fruit and insects, helping to spread seeds for native trees.",
+                    regions: "Found throughout New Zealand, including the North, South, and Stewart Islands, as well as the Chatham Islands.",
+                    sounds: "Tūī are amazing mimics! They have a complex song with clicks, cackles, and whistles. They can even copy other birds, sounds like cellphones, and car alarms. Their call is very loud and varied.",
+                    character: "Tūī are very intelligent and can be quite aggressive, often chasing other birds away from their favourite feeding spots. They are known for their energetic, acrobatic flights."
+                },
+                quiz: [
+                    { q: "What is the name of the white tuft of feathers on a Tūī's throat?", a: "A poi", o: ["A necklace", "A beard", "A scarf"] },
+                    { q: "What is a Tūī's favourite food?", a: "Nectar", o: ["Worms", "Fish", "Leaves"] },
+                    { q: "Which of these is NOT something a Tūī might copy?", a: "The roar of a lion", o: ["A cellphone ringing", "Another bird's song", "A car alarm"] },
+                    { q: "True or False: Tūī are shy and quiet birds.", a: "False", o: ["True"] },
+                    { q: "Where would you most likely find a Tūī?", a: "In a flowering Pōhutukawa tree", o: ["On a sandy beach", "High in snowy mountains", "In a deep cave"] },
+                    { q: "How do Tūī help native trees?", a: "By spreading their seeds", o: ["By building nests in them", "By eating their leaves", "By scaring away pests"] },
+                ]
+            },
+            kereru: {
+                name: "Kererū",
+                tree: "Kōwhai",
+                facts: {
+                    appearance: "The Kererū, or New Zealand Wood Pigeon, is a very large, beautiful bird. It has a shimmering green and purple head and chest, with a clean white belly.",
+                    habitat: "They live in native forests all over New Zealand. You can sometimes see them in city parks and gardens if there are enough native trees for them to eat.",
+                    diet: "Kererū are fruit-eaters! They love the berries of trees like miro, tawa, and karaka. Their large size means they can swallow very big fruit, which no other native bird can do.",
+                    regions: "Found all across the North, South, and Stewart Islands of New Zealand. Their numbers have increased in some areas thanks to conservation efforts.",
+                    sounds: "Unlike the Tūī, the Kererū is very quiet. It makes soft 'coo' sounds. More often, you'll hear the loud 'whoosh' of its wings as it flies through the trees.",
+                    character: "Kererū are sometimes called 'clumsy' because they can crash-land in branches. They are essential for the health of our forests because they are the only bird that can spread the seeds of our largest native trees."
+                },
+                quiz: [
+                    { q: "What is the other name for the Kererū?", a: "NZ Wood Pigeon", o: ["Forest Parrot", "Giant Sparrow", "Kiwi's Cousin"] },
+                    { q: "What colour is a Kererū's belly?", a: "White", o: ["Green", "Purple", "Black"] },
+                    { q: "Why is the Kererū so important for native forests?", a: "It spreads seeds of large fruit", o: ["It eats all the insects", "It has a loud song", "It builds huge nests"] },
+                    { q: "What sound do you often hear when a Kererū is flying?", a: "A loud 'whoosh' from its wings", o: ["A high-pitched whistle", "A quiet chirp", "A loud squawk"] },
+                    { q: "True or False: Kererū mainly eat insects.", a: "False", o: ["True"] },
+                    { q: "A Kererū's diet consists mainly of what?", a: "Fruit and berries", o: ["Fish", "Nectar", "Small animals"] },
+                ]
+            },
+            piwakawaka: {
+                name: "Pīwakawaka (Fantail)",
+                tree: "Tōtara",
+                facts: {
+                    appearance: "The Pīwakawaka is a small bird with a long, fan-shaped tail. Most have brown feathers, but some are all black. They are famous for their beautiful tail which they flick around.",
+                    habitat: "They are very adaptable and live in a wide range of habitats, including native forests, scrubland, and gardens. They aren't shy and often come close to people.",
+                    diet: "Pīwakawaka are insect-eaters. They are amazing aerial acrobats, twisting and turning in the air to catch moths, flies, and beetles. They often follow people or other animals to catch insects that are disturbed.",
+                    regions: "Found everywhere in New Zealand, from the top of the North Island to the bottom of the South Island.",
+                    sounds: "They have a cheerful, chirpy 'cheet-cheet' call. It's a very common and friendly sound in the New Zealand bush.",
+                    character: "Pīwakawaka are known for being friendly, curious, and energetic. They are constantly on the move, flitting from branch to branch and fanning their tails. In Māori tradition, they are seen as messengers."
+                },
+                quiz: [
+                    { q: "What is the most distinctive feature of a Pīwakawaka?", a: "Its fan-shaped tail", o: ["Its bright red beak", "Its long legs", "Its huge wings"] },
+                    { q: "What does a Pīwakawaka eat?", a: "Insects", o: ["Berries", "Nectar", "Seeds"] },
+                    { q: "Why might a Pīwakawaka follow you while you're walking?", a: "To catch insects you disturb", o: ["Because it's lost", "It wants you to feed it", "It's trying to race you"] },
+                    { q: "What is the Pīwakawaka's call like?", a: "A cheerful 'cheet-cheet'", o: ["A loud 'squawk'", "A soft 'coo'", "A series of clicks"] },
+                    { q: "True or False: The Pīwakawaka is a very shy bird.", a: "False", o: ["True"] },
+                    { q: "The Pīwakawaka is also known as the...", a: "Fantail", o: ["Songbird", "Bush-dancer", "Leaf-hopper"] },
+                ]
+            },
+            kiwi: {
+                name: "Kiwi",
+                tree: "Native Bush",
+                facts: {
+                    appearance: "Kiwi are flightless, nocturnal birds with shaggy, hair-like brown feathers. They have a very long beak with nostrils at the very tip, which is unique among birds! They have strong legs but tiny, useless wings.",
+                    habitat: "They live on the forest floor, hidden in the undergrowth of native bush. They sleep during the day in burrows, hollow logs, or under dense vegetation.",
+                    diet: "Using their excellent sense of smell, they poke their long beaks into the soil to find worms, grubs, insects, and fallen fruit.",
+                    regions: "Found in forested areas of the North Island, South Island, and Stewart Island. Different species of kiwi live in different parts of the country.",
+                    sounds: "Kiwi have a loud, piercing call that travels a long way at night. The male's call is a repeated 'kiwi-kiwi' (which gives them their name), while the female has a lower, hoarser cry.",
+                    character: "Kiwi are our national icon! They are shy and active at night (nocturnal). Unusually, the female kiwi lays a huge egg—one of the largest in relation to her body size—and often it's the dad who sits on it until it hatches."
+                },
+                quiz: [
+                    { q: "What is special about a kiwi's beak?", a: "It has nostrils at the tip", o: ["It's made of rubber", "It glows in the dark", "It can bend"] },
+                    { q: "When are kiwi most active?", a: "At night", o: ["In the morning", "In the afternoon", "During a storm"] },
+                    { q: "True or False: Kiwi are excellent flyers.", a: "False", o: ["True"] },
+                    { q: "Which parent usually looks after the egg?", a: "The dad", o: ["The mum", "Both parents", "Neither parent"] },
+                    { q: "How do kiwi find food in the soil?", a: "By smelling with their beak", o: ["By listening for worms", "By using their sharp eyesight", "By digging with their feet"] },
+                    { q: "A kiwi's feathers are most like...", a: "Hair", o: ["Scales", "Fur", "Fish fins"] },
+                ]
+            },
+            weka: {
+                name: "Weka",
+                tree: "Native Bush",
+                facts: {
+                    appearance: "Weka are sturdy, flightless birds about the size of a chicken. They are brown with black and grey streaks, which helps them camouflage in the bush. They have a strong beak and reddish-brown eyes.",
+                    habitat: "They live in a variety of habitats, including forests, scrubland, and even on the edges of towns. They are ground-dwelling and look for food amongst the leaf litter.",
+                    diet: "Weka are omnivores, which means they eat almost anything! This includes insects, slugs, lizards, eggs, and even other birds' chicks, as well as fruit and seeds.",
+                    regions: "Found in parts of the North and South Islands, and are common on some offshore islands. Their population is scattered.",
+                    sounds: "Weka have a loud call that is often heard at dusk and dawn. It's a repeated, high-pitched 'coo-eet' sound that can be quite startling!",
+                    character: "Weka are known for being very curious and cheeky! They are notorious thieves and will often run off with shiny objects, food, or anything else that catches their eye. They are fast runners and good swimmers."
+                },
+                quiz: [
+                    { q: "A weka is about the same size as a...", a: "Chicken", o: ["Sparrow", "Ostrich", "Duck"] },
+                    { q: "Which word best describes a weka's personality?", a: "Cheeky and curious", o: ["Shy and quiet", "Sleepy and slow", "Angry and loud"] },
+                    { q: "What unusual thing are weka known for doing?", a: "Stealing shiny objects", o: ["Singing at midnight", "Building nests in water", "Flying backwards"] },
+                    { q: "True or False: Weka only eat plants.", a: "False", o: ["True"] },
+                    { q: "Weka are flightless, but they are very good at...", a: "Running and swimming", o: ["Climbing trees", "Digging deep holes", "Jumping high"] },
+                    { q: "What does 'omnivore' mean?", a: "They eat plants and animals", o: ["They only eat insects", "They only eat fruit", "They sleep all day"] },
+                ]
+            }
+        };
+
+        const modalBackdrop = document.getElementById('modal-backdrop');
+        const modalContent = document.getElementById('modal-content');
+        const birds = document.querySelectorAll('.bird');
+        let currentBirdData = null;
+        let synth;
+
+        // --- Gemini API Function ---
+        async function callGeminiAPI(prompt) {
+            const apiKey = ""; // Keep this empty
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+
+            const payload = {
+                contents: [{ parts: [{ text: prompt }] }],
+            };
+            
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API call failed with status: ${response.status}`);
+                }
+
+                const result = await response.json();
+                const candidate = result.candidates?.[0];
+
+                if (candidate && candidate.content?.parts?.[0]?.text) {
+                    return candidate.content.parts[0].text;
+                } else {
+                    return "Sorry, I couldn't think of anything right now. Please try again!";
+                }
+            } catch (error) {
+                console.error("Gemini API call error:", error);
+                return "Oops! Something went wrong. Please check your connection and try again.";
+            }
+        }
+
+
+        // Create synth on first user interaction
+        function initializeAudio() {
+            if (!synth) {
+                synth = new Tone.Synth().toDestination();
+            }
+        }
+        document.body.addEventListener('click', initializeAudio, { once: true });
+
+
+        function playBirdSound(birdKey) {
+            if (!synth) return;
+
+            Tone.start(); // Ensure audio context is running
+            const now = Tone.now();
+
+            switch (birdKey) {
+                case 'tui':
+                    synth.triggerAttackRelease("C5", "8n", now);
+                    synth.triggerAttackRelease("E5", "8n", now + 0.2);
+                    synth.triggerAttackRelease("G4", "16n", now + 0.4);
+                    break;
+                case 'kereru':
+                    synth.volume.value = -10;
+                    synth.triggerAttackRelease("A3", "2n", now);
+                     synth.volume.value = 0;
+                    break;
+                case 'piwakawaka':
+                    synth.triggerAttackRelease("C6", "16n", now);
+                    synth.triggerAttackRelease("C6", "16n", now + 0.1);
+                    break;
+                case 'kiwi':
+                    synth.triggerAttackRelease("A5", "4n", now);
+                    synth.triggerAttackRelease("E5", "4n", now + 0.3);
+                    break;
+                case 'weka':
+                    synth.triggerAttackRelease("G5", "8n", now);
+                    synth.triggerAttackRelease("D6", "8n", now + 0.2);
+                    break;
+            }
+        }
+
+
+        birds.forEach(birdEl => {
+            birdEl.addEventListener('click', (e) => {
+                const birdKey = e.currentTarget.dataset.bird;
+                currentBirdData = birdData[birdKey];
+                showBirdInfo(birdKey);
+            });
+        });
+
+        function showBirdInfo(birdKey) {
+            const data = birdData[birdKey];
+            const factKeys = Object.keys(data.facts);
+            modalContent.innerHTML = `
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h2 class="font-fredoka text-4xl text-gray-800">${data.name}</h2>
+                        <p class="text-gray-500">Lives in the ${data.tree}</p>
+                    </div>
+                    <button id="close-modal" class="text-3xl text-gray-400 hover:text-gray-700 transition">&times;</button>
+                </div>
+
+                <div id="modal-body" class="mt-4">
+                    <!-- Tabs -->
+                    <div class="border-b border-gray-200 mb-4">
+                        <nav class="-mb-px flex space-x-6 overflow-x-auto" id="tabs">
+                            ${factKeys.map((key, index) => `
+                                <button data-tab="${key}" class="flex-shrink-0 tab-button capitalize py-2 px-1 text-lg font-semibold text-gray-500 hover:text-gray-800 ${index === 0 ? 'active' : ''}">${key}</button>
+                            `).join('')}
+                             <button data-tab="ask" class="flex-shrink-0 tab-button capitalize py-2 px-1 text-lg font-semibold text-gray-500 hover:text-gray-800">✨ Ask an Expert</button>
+                        </nav>
+                    </div>
+
+                    <!-- Tab Content -->
+                    <div id="tab-content" class="text-gray-700 text-lg leading-relaxed bg-gray-50 p-4 rounded-lg min-h-[150px]">
+                        ${Object.entries(data.facts).map(([key, value], index) => `
+                            <div id="tab-panel-${key}" class="${index === 0 ? '' : 'hidden'}">
+                                ${key === 'sounds' ? `
+                                    <p>${value}</p>
+                                    <button id="play-sound-btn" data-bird="${birdKey}" class="mt-3 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition">
+                                        Play Sound
+                                    </button>
+                                ` : `<p>${value}</p>`}
+                            </div>
+                        `).join('')}
+                        <div id="tab-panel-ask" class="hidden">
+                            <p class="mb-2">Have a question about the ${data.name}? Ask our expert!</p>
+                            <div class="flex gap-2">
+                                <input type="text" id="expert-question-input" class="flex-grow border-2 border-gray-300 rounded-lg p-2" placeholder="e.g., How big is a kiwi egg?">
+                                <button id="ask-expert-btn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">Ask</button>
+                            </div>
+                            <div id="expert-answer" class="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-6 flex flex-col sm:flex-row justify-center items-center gap-4">
+                        <button id="create-story-btn" class="font-fredoka bg-purple-500 hover:bg-purple-600 text-white text-xl py-3 px-6 rounded-full shadow-lg transform hover:scale-105 transition">
+                           ✨ Create a Story
+                        </button>
+                        <button id="start-quiz-btn" class="font-fredoka bg-amber-500 hover:bg-amber-600 text-white text-xl py-3 px-6 rounded-full shadow-lg transform hover:scale-105 transition">
+                            Take the Quiz!
+                        </button>
+                    </div>
+                </div>
+            `;
+            modalBackdrop.classList.add('active');
+            addModalListeners(birdKey);
+        }
+
+        function startQuiz(birdKey) {
+            const data = birdData[birdKey];
+            const shuffledQuiz = [...data.quiz].sort(() => 0.5 - Math.random()).slice(0, 5);
+            let currentQuestionIndex = 0;
+            let score = 0;
+
+            const modalBody = document.getElementById('modal-body');
+
+            function displayQuestion() {
+                if (currentQuestionIndex >= shuffledQuiz.length) {
+                    showFinalScore();
+                    return;
+                }
+                const question = shuffledQuiz[currentQuestionIndex];
+                const options = [...question.o, question.a].sort(() => 0.5 - Math.random());
+
+                modalBody.innerHTML = `
+                    <div class="text-center">
+                        <p class="text-gray-600 font-semibold mb-2">Question ${currentQuestionIndex + 1} of 5</p>
+                        <h3 class="text-2xl font-bold text-gray-800 mb-6">${question.q}</h3>
+                    </div>
+                    <div id="quiz-options" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        ${options.map(opt => `
+                            <button data-answer="${opt}" class="quiz-option text-lg w-full text-left p-4 border-2 border-gray-300 rounded-lg hover:bg-gray-100 transition">
+                                ${opt}
+                            </button>
+                        `).join('')}
+                    </div>
+                    <div id="feedback" class="mt-4 text-center font-bold text-xl"></div>
+                    <div class="text-center mt-4">
+                        <button id="next-question-btn" class="hidden font-fredoka bg-green-500 hover:bg-green-600 text-white text-lg py-2 px-6 rounded-full shadow-lg">Next Question</button>
+                    </div>
+                `;
+
+                document.querySelectorAll('.quiz-option').forEach(btn => {
+                    btn.addEventListener('click', handleAnswer);
+                });
+            }
+
+            function handleAnswer(e) {
+                const selectedAnswer = e.target.dataset.answer;
+                const correctAnswer = shuffledQuiz[currentQuestionIndex].a;
+                const feedbackEl = document.getElementById('feedback');
+                
+                document.querySelectorAll('.quiz-option').forEach(btn => {
+                    btn.disabled = true;
+                    if (btn.dataset.answer === correctAnswer) {
+                        btn.classList.add('correct');
+                    }
+                    if (btn.dataset.answer === selectedAnswer && selectedAnswer !== correctAnswer) {
+                        btn.classList.add('incorrect');
+                    }
+                });
+
+                if (selectedAnswer === correctAnswer) {
+                    score++;
+                    feedbackEl.textContent = "Correct! Great job! 🎉";
+                    feedbackEl.className = 'mt-4 text-center font-bold text-xl text-green-600';
+                } else {
+                    feedbackEl.innerHTML = `Not quite! The correct answer was: <br/> <span class="text-blue-600">${correctAnswer}</span>`;
+                    feedbackEl.className = 'mt-4 text-center font-bold text-xl text-red-600';
+                }
+
+                document.getElementById('next-question-btn').classList.remove('hidden');
+            }
+            
+            modalBody.addEventListener('click', (e) => {
+                if (e.target.id === 'next-question-btn') {
+                    currentQuestionIndex++;
+                    displayQuestion();
+                }
+            });
+
+            function showFinalScore() {
+                modalBody.innerHTML = `
+                    <div class="text-center">
+                        <h3 class="font-fredoka text-4xl text-gray-800 mb-4">Quiz Complete!</h3>
+                        <p class="text-2xl text-gray-600">You scored:</p>
+                        <p class="font-fredoka text-6xl text-blue-600 my-4">${score} out of 5</p>
+                        ${score === 5 ? "<p class='text-2xl text-amber-500'>🦉 You're a true Bird Brainiac! 🦉</p>" : "<p class='text-lg'>Great effort! Try again to get a perfect score.</p>"}
+                        <div class="mt-8">
+                             <button id="restart-quiz-btn" class="font-fredoka bg-amber-500 hover:bg-amber-600 text-white text-lg py-2 px-6 rounded-full shadow-lg mr-4">Try Again</button>
+                             <button id="back-to-facts-btn" class="font-fredoka bg-gray-500 hover:bg-gray-600 text-white text-lg py-2 px-6 rounded-full shadow-lg">Back to Facts</button>
+                        </div>
+                    </div>
+                `;
+
+                document.getElementById('restart-quiz-btn').addEventListener('click', () => startQuiz(birdKey));
+                document.getElementById('back-to-facts-btn').addEventListener('click', () => showBirdInfo(birdKey));
+            }
+
+            displayQuestion();
+        }
+
+        function addModalListeners(birdKey) {
+            document.getElementById('close-modal').addEventListener('click', () => {
+                modalBackdrop.classList.remove('active');
+            });
+
+            const tabs = document.querySelectorAll('.tab-button');
+            tabs.forEach(tab => {
+                tab.addEventListener('click', (e) => {
+                    const targetTab = e.target.dataset.tab;
+                    
+                    tabs.forEach(t => t.classList.remove('active'));
+                    e.target.classList.add('active');
+
+                    document.querySelectorAll('[id^="tab-panel-"]').forEach(panel => {
+                        panel.classList.add('hidden');
+                    });
+                    document.getElementById(`tab-panel-${targetTab}`).classList.remove('hidden');
+                });
+            });
+
+            const playSoundBtn = document.getElementById('play-sound-btn');
+            if (playSoundBtn) {
+                playSoundBtn.addEventListener('click', (e) => {
+                    playBirdSound(e.target.dataset.bird);
+                });
+            }
+
+            const startQuizBtn = document.getElementById('start-quiz-btn');
+            if(startQuizBtn) {
+                startQuizBtn.addEventListener('click', () => {
+                    startQuiz(birdKey);
+                });
+            }
+
+            // --- Gemini Feature Listeners ---
+            const createStoryBtn = document.getElementById('create-story-btn');
+            if (createStoryBtn) {
+                createStoryBtn.addEventListener('click', async () => {
+                    const birdName = birdData[birdKey].name;
+                    const tabContent = document.getElementById('tab-content');
+                    tabContent.innerHTML = `<div class="loader"></div><p class="text-center">Creating a story about the ${birdName}...</p>`;
+                    const prompt = `You are a creative storyteller for children. Write a short, fun, and imaginative story (about 3-4 paragraphs) about a New Zealand ${birdName}. The story should be suitable for a 7-10 year old and highlight some of its real characteristics, like its diet, sound, or habitat.`;
+                    const story = await callGeminiAPI(prompt);
+                    tabContent.innerHTML = `<div class="p-4 bg-purple-50 rounded-lg border border-purple-200"><h3 class="font-fredoka text-2xl text-purple-800 mb-2">A ${birdName} Story</h3><p>${story.replace(/\n/g, '<br>')}</p></div>`;
+                });
+            }
+            
+            const askExpertBtn = document.getElementById('ask-expert-btn');
+            const expertQuestionInput = document.getElementById('expert-question-input');
+            const expertAnswerDiv = document.getElementById('expert-answer');
+
+            async function handleAskExpert() {
+                 const userQuestion = expertQuestionInput.value.trim();
+                if (!userQuestion) {
+                    expertAnswerDiv.innerHTML = "<p class='text-red-600'>Please type a question first!</p>";
+                    return;
+                }
+                expertAnswerDiv.innerHTML = `<div class="loader"></div><p class="text-center">Our expert is thinking...</p>`;
+                const birdName = birdData[birdKey].name;
+                const prompt = `You are a friendly bird expert talking to a child. The child is learning about the New Zealand bird, the ${birdName}. Please answer their question in a simple, fun, and encouraging way (2-3 sentences). The question is: "${userQuestion}"`;
+                const answer = await callGeminiAPI(prompt);
+                expertAnswerDiv.innerHTML = `<p>${answer}</p>`;
+                expertQuestionInput.value = '';
+            }
+
+            if (askExpertBtn) {
+                askExpertBtn.addEventListener('click', handleAskExpert);
+            }
+            if(expertQuestionInput) {
+                expertQuestionInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        handleAskExpert();
+                    }
+                });
+            }
+        }
+
+        modalBackdrop.addEventListener('click', (e) => {
+            if (e.target === modalBackdrop) {
+                modalBackdrop.classList.remove('active');
+            }
+        });
+    </script>
+
+</body>
+</html>
+
+
